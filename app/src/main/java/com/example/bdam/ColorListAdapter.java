@@ -77,6 +77,6 @@ public class ColorListAdapter extends BaseAdapter {
     private static class ViewHolder {
         View colorSwatch;
         TextView colorName;
-        ImageView selectedIndicator; //hello
+        ImageView selectedIndicator; //hello cac ban
     }
 }
