@@ -27,7 +27,7 @@ public class ColorListAdapter extends BaseAdapter {
     @Override
     public int getCount() {
         return colorList.size();
-    }
+    } // hello cac con vk
 
     @Override
     public Object getItem(int position) {
