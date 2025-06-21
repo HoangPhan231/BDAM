@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/background_light"
+    tools:context=".SettingsActivity">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="0dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingVertical="16dp"
+            android:paddingHorizontal="16dp"
+            android:background="#00BCD4">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/settings_title"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#E0F7FA"
+            android:padding="16dp"
+            android:layout_marginBottom="8dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Get pro version from Google Play"
+                android:textColor="#00BCD4"
+                android:textSize="16sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:paddingHorizontal="16dp">
+
+            <TextView
+                android:id="@+id/setting_font_color"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Font Color (White)"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:paddingVertical="12dp"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:gravity="center_vertical" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEEEEE"/>
+
+            <TextView
+                android:id="@+id/setting_text_size"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Text size (Medium)"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:paddingVertical="12dp"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:gravity="center_vertical" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEEEEE"/>
+
+            <TextView
+                android:id="@+id/setting_position"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Position (Bottom Right)"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:paddingVertical="12dp"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:gravity="center_vertical" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEEEEE"/>
+
+            <TextView
+                android:id="@+id/setting_date_time"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Date time"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:paddingVertical="12dp"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:gravity="center_vertical" />
+            <View android:layout_width="match_parent" android:layout_height="1dp" android:background="#EEEEEE"/>
+
+            <TextView
+                android:id="@+id/setting_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Address"
+                android:textColor="@android:color/black"
+                android:textSize="16sp"
+                android:paddingVertical="12dp"
+                android:drawableEnd="@android:drawable/arrow_down_float"
+                android:gravity="center_vertical" />
+
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <Button
+                android:id="@+id/button_change_text_order"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Change text order"
+                android:backgroundTint="#00BCD4"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp" />
+
+            <Button
+                android:id="@+id/button_add_tag"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Add Tag"
+                android:backgroundTint="#00BCD4"
+                android:textColor="@android:color/white"
+                android:layout_marginBottom="8dp" />
+
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <Button
+                    android:id="@+id/button_restore"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="1dp"
+                    android:layout_weight="1"
+                    android:backgroundTint="#FF5722"
+                    android:gravity="center"
+                    android:text="Reset"
+                    android:textColor="@android:color/white" />
+
+                <Button
+                    android:id="@+id/button_advanced"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1.2"
+                    android:text="Advanced"
+                    android:backgroundTint="#2196F3"
+                    android:textColor="@android:color/white"
+                    android:layout_marginEnd="3dp"
+                    android:layout_marginStart="3dp" />
+
+                <Button
+                    android:id="@+id/button_ok"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="OK"
+                    android:backgroundTint="#4CAF50"
+                    android:textColor="@android:color/white"
+                    android:layout_marginStart="4dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

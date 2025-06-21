@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Add Tag"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="@android:color/black"
+        android:layout_marginBottom="16dp"/>
+
+    <EditText
+        android:id="@+id/editText_add_tag_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Nhập tag vào đây"
+        android:inputType="textMultiLine"
+        android:lines="4"
+        android:gravity="top"
+        android:padding="8dp"
+        android:background="@drawable/edittext_border"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tips: the tags will be added to the EXIF metadata. Touch the tag to select or unselect, long press to delete. You can import tags from txt file, put them in different lines or seperate them by #"
+        android:textSize="12sp"
+        android:textColor="@android:color/darker_gray"
+        android:layout_marginBottom="16dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="end">
+
+        <Button
+            android:id="@+id/button_delete_all"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Delete all"
+            android:layout_marginEnd="8dp"
+            style="?attr/buttonBarButtonStyle" />
+
+        <Button
+            android:id="@+id/button_import"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Import"
+            android:layout_marginEnd="8dp"
+            style="?attr/buttonBarButtonStyle" />
+
+        <Button
+            android:id="@+id/button_ok_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="OK"
+            style="?attr/buttonBarPositiveButtonStyle" />
+    </LinearLayout>
+
+</LinearLayout>

@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">BDAM</string>
+    <string name="settings_title">Cài đặt</string>
+    <string name="gallery_title">Xem ảnh</string>
+</resources>

@@ -1,0 +1,36 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 1. Vòng tròn nền - Sửa thành fill đầy đủ -->
+    <path
+        android:fillColor="#FF000000"
+        android:pathData="M12,2A10,10 0 1,1 2,12A10,10 0 0,1 12,2Z" />
+
+    <!-- 2. Viền bo tròn - Đổi màu viền rõ hơn -->
+    <path
+        android:strokeColor="#FFA8A4A4"
+        android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:pathData="M12,2A10,10 0 1,1 2,12A10,10 0 0,1 12,2Z" />
+
+    <!-- 3. Tia sét - Giữ nguyên -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,4L6,14H11V20L18,10H13L16,4H8Z" />
+
+    <!-- 4. Đường gạch chéo - Tối ưu thứ tự -->
+    <path
+        android:strokeColor="#FF000000"
+        android:strokeWidth="3"
+        android:pathData="M4,4L20,20"
+        android:strokeLineCap="round" />
+
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:pathData="M4,4L20,20"
+        android:strokeLineCap="round" />
+</vector>
