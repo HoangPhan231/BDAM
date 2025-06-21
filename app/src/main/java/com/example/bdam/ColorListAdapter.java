@@ -27,7 +27,7 @@ public class ColorListAdapter extends BaseAdapter {
     @Override
     public int getCount() {
         return colorList.size();
-    } // hello cac con vk
+    }
 
     @Override
     public Object getItem(int position) {
@@ -77,6 +77,6 @@ public class ColorListAdapter extends BaseAdapter {
     private static class ViewHolder {
         View colorSwatch;
         TextView colorName;
-        ImageView selectedIndicator;
+        ImageView selectedIndicator; //hello
     }
 }
