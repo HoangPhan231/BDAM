@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp">
 
     <TextView
         android:layout_width="wrap_content"
@@ -14,25 +15,46 @@
         android:textColor="@android:color/black"
         android:layout_marginBottom="16dp"/>
 
-    <EditText
-        android:id="@+id/editText_add_tag_input"
+    <com.google.android.material.chip.ChipGroup
+        android:id="@+id/chip_group_tags"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Nhập tag vào đây"
-        android:inputType="textMultiLine"
-        android:lines="4"
-        android:gravity="top"
-        android:padding="8dp"
-        android:background="@drawable/edittext_border"
-        android:layout_marginBottom="16dp" />
+        app:chipSpacing="8dp"
+        android:layout_marginBottom="16dp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="16dp">
+
+        <EditText
+            android:id="@+id/edit_text_tag_input"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Enter a new tag"
+            android:inputType="text"
+            android:maxLines="1"
+            android:layout_marginEnd="8dp"/>
+
+        <Button
+            android:id="@+id/button_add_new_tag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Add Tag"/>
+
+    </LinearLayout>
+
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Tips: the tags will be added to the EXIF metadata. Touch the tag to select or unselect, long press to delete. You can import tags from txt file, put them in different lines or seperate them by #"
+        android:text="Tips: the tags will be add to the EXIF metadata. Touch the tag to select or unselect, long press to delete. You can import tags from txt file, put them in different lines or seperate them by #"
         android:textSize="12sp"
         android:textColor="@android:color/darker_gray"
-        android:layout_marginBottom="16dp"/>
+        android:layout_marginBottom="24dp"/>
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -42,26 +64,26 @@
 
         <Button
             android:id="@+id/button_delete_all"
+            style="?attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Delete all"
             android:layout_marginEnd="8dp"
-            style="?attr/buttonBarButtonStyle" />
+            android:text="Delete all" />
 
         <Button
             android:id="@+id/button_import"
+            style="?attr/buttonBarButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Import"
             android:layout_marginEnd="8dp"
-            style="?attr/buttonBarButtonStyle" />
+            android:text="Import" />
 
         <Button
             android:id="@+id/button_ok_tag"
+            style="?attr/buttonBarPositiveButtonStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="OK"
-            style="?attr/buttonBarPositiveButtonStyle" />
+            android:text="OK" />
     </LinearLayout>
 
 </LinearLayout>

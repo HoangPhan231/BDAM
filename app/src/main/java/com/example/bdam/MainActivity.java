@@ -1,10 +1,8 @@
 package com.example.bdam;
 
 import android.Manifest;
-import android.content.ContentResolver;
-import android.content.ContentValues;
 import android.content.Context;
-import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -12,7 +10,7 @@ import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.Paint;
-import android.graphics.PorterDuff;
+import android.graphics.Rect;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -29,10 +27,12 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.util.Size;
 import android.util.SparseIntArray;
+import android.util.TypedValue;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -40,9 +40,14 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.ContentResolver;
+import android.content.ContentValues;
+import android.content.Intent;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.constraintlayout.widget.ConstraintSet;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -55,8 +60,10 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -68,14 +75,10 @@ public class MainActivity extends AppCompatActivity {
     // --- Views ---
     private TextureView textureView;
     private EditText editTextTextToAdd;
-    private ImageButton buttonCapture;
-    private ImageButton buttonSettings;
-    private ImageButton buttonFlashAuto, buttonFlashOn, buttonFlashOff;
-    private ImageButton buttonCameraSwitch;
-    private ImageButton buttonGalleryThumbnail;
-    private TextView textPhoto, textVideo;
-    private TextView textOverlayDisplay;
+    private ImageButton buttonCapture, buttonSettings, buttonFlash, buttonCameraSwitch, buttonGalleryThumbnail;
+    private TextView textPhoto, textVideo, textOverlayDisplay;
     private View focusOverlay;
+    private ConstraintLayout mainActivityLayout;
 
     // --- Camera2 API Variables ---
     private CameraDevice cameraDevice;
@@ -83,24 +86,27 @@ public class MainActivity extends AppCompatActivity {
     private CaptureRequest.Builder previewCaptureRequestBuilder;
     private Size previewSize;
     private String cameraId;
-    private int cameraFacing = CameraCharacteristics.LENS_FACING_BACK;
+    private int cameraFacing = CameraCharacteristics.LENS_FACING_FRONT;
     private ImageReader imageReader;
+    private int flashMode = CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH;
 
     // --- Background Thread for Camera Operations ---
     private HandlerThread backgroundThread;
     private Handler backgroundHandler;
-
-    // --- Semaphore to prevent camera from closing prematurely ---
     private Semaphore cameraOpenCloseLock = new Semaphore(1);
 
-    // --- Text Properties ---
-    private String currentText = "";
-    private float textSize = 40f;
+    // --- Handler để cập nhật overlay trực tiếp ---
+    private Handler overlayUpdateHandler;
+    private Runnable overlayUpdateRunnable;
+
+    // --- Biến lưu cài đặt để tránh đọc lại SharedPreferences liên tục ---
+    private String currentTextToDisplay = "";
+    private String currentDateFormat = "EEEE, dd MMMM yyyy";
+    private Set<String> currentTags = new HashSet<>();
+    private float currentTextSize = 20f;
+    private int currentTextColor = Color.WHITE;
     private TextPosition currentTextPosition = TextPosition.BOTTOM_RIGHT;
 
-    private enum TextPosition {
-        TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT
-    }
 
     private static final SparseIntArray ORIENTATIONS = new SparseIntArray();
     static {
@@ -123,7 +129,6 @@ public class MainActivity extends AppCompatActivity {
             cameraOpenCloseLock.release();
             camera.close();
             cameraDevice = null;
-            Toast.makeText(MainActivity.this, "Camera đã ngắt kết nối.", Toast.LENGTH_SHORT).show();
         }
 
         @Override
@@ -131,7 +136,6 @@ public class MainActivity extends AppCompatActivity {
             cameraOpenCloseLock.release();
             camera.close();
             cameraDevice = null;
-            Toast.makeText(MainActivity.this, "Lỗi camera: " + error, Toast.LENGTH_SHORT).show();
             finish();
         }
     };
@@ -143,8 +147,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
-        }
+        public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {}
 
         @Override
         public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
@@ -152,9 +155,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
-            updateTimestampOverlay();
-        }
+        public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {}
     };
 
     @Override
@@ -162,19 +163,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        textureView = findViewById(R.id.textureView);
-        editTextTextToAdd = findViewById(R.id.editText_textToAdd);
-        buttonCapture = findViewById(R.id.button_capture);
-        buttonSettings = findViewById(R.id.button_settings);
-        buttonFlashAuto = findViewById(R.id.button_flash_auto);
-        buttonFlashOn = findViewById(R.id.button_flash_on);
-        buttonFlashOff = findViewById(R.id.button_flash_off);
-        buttonCameraSwitch = findViewById(R.id.button_camera_switch);
-        buttonGalleryThumbnail = findViewById(R.id.button_gallery_thumbnail);
-        textPhoto = findViewById(R.id.text_photo);
-        textVideo = findViewById(R.id.text_video);
-        textOverlayDisplay = findViewById(R.id.text_overlay_display);
-        focusOverlay = findViewById(R.id.focus_overlay);
+        initializeViews();
 
         if (checkAndRequestPermissions()) {
             setupCameraTextureView();
@@ -194,8 +183,22 @@ public class MainActivity extends AppCompatActivity {
             return true;
         });
 
-        updateTimestampOverlay();
         updateGalleryThumbnail();
+    }
+
+    private void initializeViews() {
+        mainActivityLayout = findViewById(R.id.main_activity_layout);
+        textureView = findViewById(R.id.textureView);
+        editTextTextToAdd = findViewById(R.id.editText_textToAdd);
+        buttonCapture = findViewById(R.id.button_capture);
+        buttonSettings = findViewById(R.id.button_settings);
+        buttonFlash = findViewById(R.id.button_flash_auto); // Sử dụng một nút duy nhất cho flash
+        buttonCameraSwitch = findViewById(R.id.button_camera_switch);
+        buttonGalleryThumbnail = findViewById(R.id.button_gallery_thumbnail);
+        textPhoto = findViewById(R.id.text_photo);
+        textVideo = findViewById(R.id.text_video);
+        textOverlayDisplay = findViewById(R.id.text_overlay_display);
+        focusOverlay = findViewById(R.id.focus_overlay);
     }
 
     @Override
@@ -207,6 +210,7 @@ public class MainActivity extends AppCompatActivity {
         } else {
             textureView.setSurfaceTextureListener(textureListener);
         }
+        loadSettingsAndUpdateOverlay();
         updateGalleryThumbnail();
     }
 
@@ -214,6 +218,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onPause() {
         closeCamera();
         stopBackgroundThread();
+        if (overlayUpdateHandler != null) {
+            overlayUpdateHandler.removeCallbacks(overlayUpdateRunnable);
+        }
         super.onPause();
     }
 
@@ -221,12 +228,6 @@ public class MainActivity extends AppCompatActivity {
         List<String> permissionsNeeded = new ArrayList<>();
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             permissionsNeeded.add(Manifest.permission.CAMERA);
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-            permissionsNeeded.add(Manifest.permission.RECORD_AUDIO);
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            permissionsNeeded.add(Manifest.permission.ACCESS_FINE_LOCATION);
         }
         if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
@@ -244,20 +245,13 @@ public class MainActivity extends AppCompatActivity {
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == REQUEST_PERMISSIONS) {
-            boolean allGranted = true;
-            for (int grantResult : grantResults) {
-                if (grantResult != PackageManager.PERMISSION_GRANTED) {
-                    allGranted = false;
-                    break;
-                }
-            }
-            if (allGranted) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 setupCameraTextureView();
                 if (textureView.isAvailable()) {
                     openCamera(textureView.getWidth(), textureView.getHeight());
                 }
             } else {
-                Toast.makeText(this, "BDAM cần các quyền để hoạt động.", Toast.LENGTH_LONG).show();
+                Toast.makeText(this, "BDAM cần quyền truy cập camera để hoạt động.", Toast.LENGTH_LONG).show();
             }
         }
     }
@@ -269,40 +263,39 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
 
-        buttonFlashAuto.setOnClickListener(v -> {
-            // Logic for Flash Auto
-        });
-        buttonFlashOn.setOnClickListener(v -> {
-            // Logic for Flash On
-        });
-        buttonFlashOff.setOnClickListener(v -> {
-            // Logic for Flash Off
-        });
-
+        buttonFlash.setOnClickListener(v -> toggleFlashMode());
         buttonCameraSwitch.setOnClickListener(v -> switchCamera());
         buttonGalleryThumbnail.setOnClickListener(v -> {
             Intent intent = new Intent(MainActivity.this, GalleryActivity.class);
             startActivity(intent);
         });
 
-        textPhoto.setOnClickListener(v -> {
-            textPhoto.setTextColor(Color.WHITE);
-            textPhoto.setTypeface(null, android.graphics.Typeface.BOLD);
-            textVideo.setTextColor(Color.parseColor("#CCCCCC"));
-            textVideo.setTypeface(null, android.graphics.Typeface.NORMAL);
-        });
-        textVideo.setOnClickListener(v -> {
-            textVideo.setTextColor(Color.WHITE);
-            textVideo.setTypeface(null, android.graphics.Typeface.BOLD);
-            textPhoto.setTextColor(Color.parseColor("#CCCCCC"));
-            textPhoto.setTypeface(null, android.graphics.Typeface.NORMAL);
-        });
+        // Các listener khác...
     }
 
-    private void updateTimestampOverlay() {
-        SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-        String currentDateTime = sdf.format(new Date());
-        textOverlayDisplay.setText(currentDateTime);
+    private void toggleFlashMode() {
+        switch (flashMode) {
+            case CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH:
+                flashMode = CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH;
+                buttonFlash.setImageResource(R.drawable.ic_flash_on);
+                break;
+            case CaptureRequest.CONTROL_AE_MODE_ON_ALWAYS_FLASH:
+                flashMode = CaptureRequest.CONTROL_AE_MODE_OFF;
+                buttonFlash.setImageResource(R.drawable.ic_flash_off);
+                break;
+            case CaptureRequest.CONTROL_AE_MODE_OFF:
+            default:
+                flashMode = CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH;
+                buttonFlash.setImageResource(R.drawable.ic_flash_auto);
+                break;
+        }
+        // Áp dụng ngay chế độ flash mới vào preview
+        try {
+            previewCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, flashMode);
+            cameraCaptureSession.setRepeatingRequest(previewCaptureRequestBuilder.build(), null, backgroundHandler);
+        } catch (CameraAccessException | IllegalStateException e) {
+            Log.e(TAG, "Failed to set flash mode", e);
+        }
     }
 
     private void updateGalleryThumbnail() {
@@ -311,12 +304,12 @@ public class MainActivity extends AppCompatActivity {
         Uri uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
         try (android.database.Cursor cursor = getContentResolver().query(uri, projection, null, null, sortOrder + " LIMIT 1")) {
             if (cursor != null && cursor.moveToFirst()) {
-                int dataColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATA);
-                String imagePath = cursor.getString(dataColumn);
-                Bitmap thumbnailBitmap = android.graphics.BitmapFactory.decodeFile(imagePath);
-                if (thumbnailBitmap != null) {
-                    buttonGalleryThumbnail.setImageBitmap(thumbnailBitmap);
-                }
+                int idColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+                long id = cursor.getLong(idColumn);
+                Uri imageUri = Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, String.valueOf(id));
+
+                // Sử dụng Glide hoặc phương thức khác để load thumbnail hiệu quả hơn
+                buttonGalleryThumbnail.setImageURI(imageUri);
             }
         } catch (Exception e) {
             Log.e(TAG, "Error updating gallery thumbnail: " + e.getMessage(), e);
@@ -332,24 +325,20 @@ public class MainActivity extends AppCompatActivity {
         if (!checkAndRequestPermissions()) return;
         CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         try {
-            for (String camId : manager.getCameraIdList()) {
-                CameraCharacteristics characteristics = manager.getCameraCharacteristics(camId);
-                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (facing != null && facing == cameraFacing) {
-                    cameraId = camId;
-                    StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-                    if (map == null) continue;
-                    previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height);
-                    Size largestImageSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
-                    imageReader = ImageReader.newInstance(largestImageSize.getWidth(), largestImageSize.getHeight(), ImageFormat.JPEG, 2);
-                    imageReader.setOnImageAvailableListener(onImageAvailableListener, backgroundHandler);
-                    if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
-                        throw new RuntimeException("Time out waiting to lock camera opening.");
-                    }
-                    manager.openCamera(cameraId, stateCallback, backgroundHandler);
-                    return;
-                }
+            cameraId = manager.getCameraIdList()[cameraFacing];
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraId);
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            if (map == null) return;
+
+            previewSize = chooseOptimalSize(map.getOutputSizes(SurfaceTexture.class), width, height);
+            Size largestImageSize = Collections.max(Arrays.asList(map.getOutputSizes(ImageFormat.JPEG)), new CompareSizesByArea());
+            imageReader = ImageReader.newInstance(largestImageSize.getWidth(), largestImageSize.getHeight(), ImageFormat.JPEG, 2);
+            imageReader.setOnImageAvailableListener(onImageAvailableListener, backgroundHandler);
+
+            if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
+                throw new RuntimeException("Time out waiting to lock camera opening.");
             }
+            manager.openCamera(cameraId, stateCallback, backgroundHandler);
         } catch (CameraAccessException | InterruptedException e) {
             Log.e(TAG, "Cannot access camera", e);
         }
@@ -358,11 +347,7 @@ public class MainActivity extends AppCompatActivity {
     private void switchCamera() {
         closeCamera();
         cameraFacing = (cameraFacing == CameraCharacteristics.LENS_FACING_BACK) ? CameraCharacteristics.LENS_FACING_FRONT : CameraCharacteristics.LENS_FACING_BACK;
-        if (textureView.isAvailable()) {
-            openCamera(textureView.getWidth(), textureView.getHeight());
-        } else {
-            textureView.setSurfaceTextureListener(textureListener);
-        }
+        openCamera(textureView.getWidth(), textureView.getHeight());
     }
 
     private void closeCamera() {
@@ -393,8 +378,10 @@ public class MainActivity extends AppCompatActivity {
             assert texture != null;
             texture.setDefaultBufferSize(previewSize.getWidth(), previewSize.getHeight());
             Surface previewSurface = new Surface(texture);
+
             previewCaptureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             previewCaptureRequestBuilder.addTarget(previewSurface);
+
             cameraDevice.createCaptureSession(Arrays.asList(previewSurface, imageReader.getSurface()), new CameraCaptureSession.StateCallback() {
                 @Override
                 public void onConfigured(@NonNull CameraCaptureSession session) {
@@ -402,6 +389,7 @@ public class MainActivity extends AppCompatActivity {
                     cameraCaptureSession = session;
                     try {
                         previewCaptureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+                        previewCaptureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, flashMode);
                         cameraCaptureSession.setRepeatingRequest(previewCaptureRequestBuilder.build(), null, backgroundHandler);
                     } catch (CameraAccessException e) {
                         Log.e(TAG, "Failed to start camera preview", e);
@@ -419,8 +407,10 @@ public class MainActivity extends AppCompatActivity {
 
     private static Size chooseOptimalSize(Size[] choices, int width, int height) {
         List<Size> bigEnough = new ArrayList<>();
+        int w = width;
+        int h = height;
         for (Size option : choices) {
-            if (option.getHeight() == option.getWidth() * height / width && option.getWidth() >= width && option.getHeight() >= height) {
+            if (option.getHeight() == option.getWidth() * h / w && option.getWidth() >= w && option.getHeight() >= h) {
                 bigEnough.add(option);
             }
         }
@@ -458,52 +448,154 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void takePicture() {
-        if (cameraDevice == null || cameraCaptureSession == null) {
-            Toast.makeText(this, "Camera chưa sẵn sàng.", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        if (cameraDevice == null || cameraCaptureSession == null) return;
         try {
             final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
             captureBuilder.addTarget(imageReader.getSurface());
             captureBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            captureBuilder.set(CaptureRequest.CONTROL_AE_MODE, flashMode);
+
             int rotation = getWindowManager().getDefaultDisplay().getRotation();
             captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
-            CameraCaptureSession.CaptureCallback captureCallback = new CameraCaptureSession.CaptureCallback() {
+
+            cameraCaptureSession.stopRepeating();
+            cameraCaptureSession.capture(captureBuilder.build(), new CameraCaptureSession.CaptureCallback() {
                 @Override
                 public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull android.hardware.camera2.TotalCaptureResult result) {
                     super.onCaptureCompleted(session, request, result);
                     createCameraPreviewSession();
-                    runOnUiThread(this::updateGalleryThumbnail); // Ensure UI update is on the main thread
+                    //runOnUiThread(MainActivity.this::updateGalleryThumbnail);
                 }
-                private void updateGalleryThumbnail() {
-                    MainActivity.this.updateGalleryThumbnail();
-                }
-            };
-            cameraCaptureSession.stopRepeating();
-            cameraCaptureSession.capture(captureBuilder.build(), captureCallback, null);
+            }, null);
         } catch (CameraAccessException e) {
             Log.e(TAG, "Failed to capture picture", e);
         }
     }
 
-    private final ImageReader.OnImageAvailableListener onImageAvailableListener = new ImageReader.OnImageAvailableListener() {
-        @Override
-        public void onImageAvailable(ImageReader reader) {
-            backgroundHandler.post(new ImageSaver(reader.acquireNextImage(), currentText, textSize, currentTextPosition));
-        }
+    private final ImageReader.OnImageAvailableListener onImageAvailableListener = reader -> {
+        backgroundHandler.post(new ImageSaver(reader.acquireLatestImage(), currentTextToDisplay, currentTextColor, currentTextSize, currentTextPosition, cameraFacing == CameraCharacteristics.LENS_FACING_FRONT, MainActivity.this));
     };
 
-    private class ImageSaver implements Runnable {
-        private final Image mImage;
-        private final String textToDraw;
-        private final float fontSize;
-        private final TextPosition position;
+    private void loadSettingsAndUpdateOverlay() {
+        SharedPreferences prefs = getSharedPreferences(SettingsActivity.PREFS_NAME, Context.MODE_PRIVATE);
 
-        ImageSaver(Image image, String text, float size, TextPosition pos) {
+        // 1. Tải các giá trị cài đặt
+        currentTextColor = prefs.getInt(SettingsActivity.KEY_COLOR, Color.WHITE);
+        currentTextSize = prefs.getFloat(SettingsActivity.KEY_TEXT_SIZE, 2f);
+        currentDateFormat = prefs.getString(SettingsActivity.KEY_DATE_FORMAT, "EEEE, dd MMMM yyyy");
+        currentTags = prefs.getStringSet(SettingsActivity.KEY_TAGS, new HashSet<>());
+        String positionName = prefs.getString(SettingsActivity.KEY_POSITION, TextPosition.BOTTOM_RIGHT.name());
+        currentTextPosition = TextPosition.valueOf(positionName);
+
+        // 2. Áp dụng màu sắc và kích thước
+        textOverlayDisplay.setTextColor(currentTextColor);
+        textOverlayDisplay.setTextSize(TypedValue.COMPLEX_UNIT_SP, currentTextSize);
+
+        // 3. Áp dụng vị trí
+        applyTextPosition(currentTextPosition);
+
+        // 4. Khởi tạo và bắt đầu Handler để cập nhật văn bản mỗi giây
+        if (overlayUpdateHandler == null) {
+            overlayUpdateHandler = new Handler(Looper.getMainLooper());
+        } else {
+            overlayUpdateHandler.removeCallbacks(overlayUpdateRunnable);
+        }
+
+        overlayUpdateRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Lấy định dạng ngày giờ đã chọn trong cài đặt
+                SimpleDateFormat sdf = new SimpleDateFormat(currentDateFormat, Locale.getDefault());
+                String dateTimeString = sdf.format(new Date());
+                // Lấy danh sách các tag đã lưu
+                StringBuilder tagsBuilder = new StringBuilder();
+                if (currentTags != null && !currentTags.isEmpty()) {
+                    for (String tag : currentTags) {
+                        tagsBuilder.append("#").append(tag).append(" ");
+                    }
+                }
+                // Kết hợp ngày giờ và các tag lại thành một chuỗi duy nhất
+                // Đây là nơi quyết định cấu trúc cuối cùng của văn bản
+                currentTextToDisplay = dateTimeString;
+                if (tagsBuilder.length() > 0) {
+                    currentTextToDisplay += "\n" + tagsBuilder.toString().trim();
+                }
+                // Gán chuỗi đã tạo vào TextView và Lặp lại sau 1 giây
+                textOverlayDisplay.setText(currentTextToDisplay);
+                overlayUpdateHandler.postDelayed(this, 1000);
+            }
+        };
+        overlayUpdateHandler.post(overlayUpdateRunnable);
+    }
+
+    private void applyTextPosition(TextPosition position) {
+        ConstraintSet constraintSet = new ConstraintSet();
+        constraintSet.clone(mainActivityLayout);
+
+        int margin = (int) TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP, 16, getResources().getDisplayMetrics()
+        );
+
+        constraintSet.clear(R.id.text_overlay_display, ConstraintSet.TOP);
+        constraintSet.clear(R.id.text_overlay_display, ConstraintSet.BOTTOM);
+        constraintSet.clear(R.id.text_overlay_display, ConstraintSet.START);
+        constraintSet.clear(R.id.text_overlay_display, ConstraintSet.END);
+
+        switch (position) {
+            case TOP_LEFT:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.TOP, R.id.top_toolbar, ConstraintSet.BOTTOM, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, margin);
+                break;
+            case TOP_CENTER:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.TOP, R.id.top_toolbar, ConstraintSet.BOTTOM, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+                break;
+            case TOP_RIGHT:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.TOP, R.id.top_toolbar, ConstraintSet.BOTTOM, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, margin);
+                break;
+            case BOTTOM_LEFT:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.BOTTOM, R.id.bottom_control_panel, ConstraintSet.TOP, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START, margin);
+                break;
+            case BOTTOM_CENTER:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.BOTTOM, R.id.bottom_control_panel, ConstraintSet.TOP, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+                break;
+            case CENTER:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.TOP, ConstraintSet.PARENT_ID, ConstraintSet.TOP);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.BOTTOM, ConstraintSet.PARENT_ID, ConstraintSet.BOTTOM);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.START, ConstraintSet.PARENT_ID, ConstraintSet.START);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END);
+                break;
+            case BOTTOM_RIGHT:
+            default:
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.BOTTOM, R.id.bottom_control_panel, ConstraintSet.TOP, margin);
+                constraintSet.connect(R.id.text_overlay_display, ConstraintSet.END, ConstraintSet.PARENT_ID, ConstraintSet.END, margin);
+                break;
+        }
+        constraintSet.applyTo(mainActivityLayout);
+    }
+
+    private static class ImageSaver implements Runnable {
+        private final Image mImage;
+        private final String mTextToDraw;
+        private final int mTextColor;
+        private final float mTextSize;
+        private final TextPosition mPosition;
+        private final boolean mIsFrontFacing;
+        private final MainActivity  mActivity;
+
+        ImageSaver(Image image, String text, int color, float size, TextPosition pos, boolean isFront, MainActivity activity) {
             mImage = image;
-            textToDraw = text;
-            fontSize = size;
-            position = pos;
+            mTextToDraw = text;
+            mTextColor = color;
+            mTextSize = size;
+            mPosition = pos;
+            mIsFrontFacing = isFront;
+            mActivity  = activity;
         }
 
         @Override
@@ -516,62 +608,149 @@ public class MainActivity extends AppCompatActivity {
 
             if (bitmap == null) return;
 
-            if (cameraFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+            // Xoay ảnh camera trước để không bị ngược
+            /*if (mIsFrontFacing) {
                 Matrix matrix = new Matrix();
-                matrix.postScale(-1, 1);
+                matrix.postScale(-1, 1, bitmap.getWidth() / 2f, bitmap.getHeight() / 2f);
                 bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-            }
+            }*/
 
             Bitmap mutableBitmap = bitmap.copy(Bitmap.Config.ARGB_8888, true);
             Canvas canvas = new Canvas(mutableBitmap);
-            Paint paint = new Paint();
-            paint.setColor(Color.WHITE);
-            paint.setTextSize(fontSize);
+
+            // Cấu hình bút vẽ
+            Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+            paint.setColor(mTextColor);
+            float targetSizeInPixels = (float)canvas.getHeight() * (mTextSize / 500);
+            paint.setTextSize(targetSizeInPixels);
             paint.setShadowLayer(5f, 0f, 0f, Color.BLACK);
 
-            if (!textToDraw.isEmpty()) {
-                // Drawing logic remains the same
-                // ...
-                canvas.drawText(textToDraw, 50, canvas.getHeight() - 50, paint);
-            }
+            drawTextOnCanvas(canvas, paint);
 
             saveBitmapToGallery(mutableBitmap);
             bitmap.recycle();
             mutableBitmap.recycle();
         }
-    }
 
-    private void saveBitmapToGallery(Bitmap bitmap) {
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
-        String imageFileName = "BDAM_IMG_" + timeStamp + ".jpg";
-        ContentValues values = new ContentValues();
-        values.put(MediaStore.MediaColumns.DISPLAY_NAME, imageFileName);
-        values.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + getString(R.string.app_name));
-            values.put(MediaStore.Images.Media.IS_PENDING, 1);
+        private void drawTextOnCanvas(Canvas canvas, Paint paint) {
+            if (mTextToDraw == null || mTextToDraw.isEmpty()) return;
+
+            String[] lines = mTextToDraw.split("\n");
+            float margin = 50f;
+            float y;
+            float totalTextHeight = (paint.descent() - paint.ascent()) * lines.length + paint.getFontSpacing() * (lines.length - 1);
+
+            // Tính toán vị trí Y ban đầu
+            switch (mPosition) {
+                case TOP_LEFT:
+                case TOP_CENTER:
+                case TOP_RIGHT:
+                    y = margin - paint.ascent();
+                    break;
+                case CENTER:
+                    y = (canvas.getHeight() / 2f) - (totalTextHeight / 2f) - paint.ascent();
+                    break;
+                case BOTTOM_LEFT:
+                case BOTTOM_CENTER:
+                case BOTTOM_RIGHT:
+                default:
+                    y = canvas.getHeight() - margin - totalTextHeight + paint.getFontSpacing();
+                    break;
+            }
+
+            // Vẽ từng dòng
+            for (String line : lines) {
+                Rect bounds = new Rect();
+                paint.getTextBounds(line, 0, line.length(), bounds);
+                float x;
+
+                switch (mPosition) {
+                    case TOP_LEFT:
+                    case BOTTOM_LEFT:
+                        paint.setTextAlign(Paint.Align.LEFT);
+                        x = margin;
+                        break;
+                    case TOP_CENTER:
+                    case BOTTOM_CENTER:
+                    case CENTER:
+                        paint.setTextAlign(Paint.Align.CENTER);
+                        x = canvas.getWidth() / 2f;
+                        break;
+                    case TOP_RIGHT:
+                    case BOTTOM_RIGHT:
+                    default:
+                        paint.setTextAlign(Paint.Align.RIGHT);
+                        x = canvas.getWidth() - margin;
+                        break;
+                }
+                canvas.drawText(line, x, y, paint);
+                y += paint.getFontSpacing(); // Di chuyển xuống dòng tiếp theo
+            }
         }
 
-        ContentResolver resolver = getContentResolver();
-        Uri uri = null;
-        try {
-            Uri collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY);
-            uri = resolver.insert(collection, values);
-            if (uri == null) throw new IOException("Failed to create new MediaStore record.");
-            try (OutputStream fos = resolver.openOutputStream(uri)) {
-                if (fos == null) throw new IOException("Failed to get OutputStream.");
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-            }
+        // Trong file: MainActivity.java
+// Bên trong lớp: ImageSaver
+
+        private void saveBitmapToGallery(Bitmap bitmap) {
+            // 1. Chuẩn bị thông tin cho ảnh
+            String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+            String imageFileName = "BDAM_IMG_" + timeStamp + ".jpg";
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, imageFileName);
+            values.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                values.clear();
-                values.put(MediaStore.Images.Media.IS_PENDING, 0);
-                resolver.update(uri, values, null, null);
+                values.put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/" + mActivity.getString(R.string.app_name));
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
             }
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Ảnh đã lưu", Toast.LENGTH_SHORT).show());
-        } catch (IOException e) {
-            if (uri != null) resolver.delete(uri, null, null);
-            Log.e(TAG, "Error saving image", e);
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Lỗi khi lưu ảnh", Toast.LENGTH_SHORT).show());
+
+            ContentResolver resolver = mActivity.getContentResolver();
+            Uri uri = null;
+
+            try {
+                // 2. Tạo record mới trong MediaStore và lấy về Uri
+                Uri collection = MediaStore.Images.Media.EXTERNAL_CONTENT_URI;
+                uri = resolver.insert(collection, values);
+                if (uri == null) {
+                    throw new IOException("Failed to create new MediaStore record.");
+                }
+
+                // 3. Ghi dữ liệu ảnh vào Uri
+                try (OutputStream fos = resolver.openOutputStream(uri)) {
+                    if (fos == null) {
+                        throw new IOException("Failed to get OutputStream.");
+                    }
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+                }
+
+                // 4. Báo hiệu ảnh đã sẵn sàng
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    values.clear();
+                    values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    resolver.update(uri, values, null, null);
+                }
+
+                // 5. Cập nhật UI với Uri của ảnh vừa lưu
+                // Tạo biến final để có thể sử dụng trong lambda
+                final Uri finalUri = uri;
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    Toast.makeText(mActivity, "Ảnh đã lưu", Toast.LENGTH_SHORT).show();
+
+                    // Dùng Glide để tải ảnh từ Uri và hiển thị lên ImageButton
+                    // Đây là cách hiệu quả và chắc chắn nhất
+                    com.bumptech.glide.Glide.with(mActivity)
+                            .load(finalUri)
+                            .centerCrop()
+                            .into(mActivity.buttonGalleryThumbnail);
+                });
+
+            } catch (IOException e) {
+                if (uri != null) {
+                    resolver.delete(uri, null, null);
+                }
+                Log.e(TAG, "Error saving image", e);
+                new Handler(Looper.getMainLooper()).post(() ->
+                        Toast.makeText(mActivity, "Lỗi khi lưu ảnh", Toast.LENGTH_SHORT).show());
+            }
         }
     }
 }

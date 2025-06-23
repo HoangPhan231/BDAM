@@ -11,22 +11,25 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageViewHolder> {
 
     private final Context context;
-    private final List<Uri> imageUris;
-    private final List<Uri> selectedUris = new ArrayList<>();
+    // Làm việc với danh sách MediaItem từ GalleryActivity
+    private final List<GalleryActivity.MediaItem> mediaItems;
+    private final List<GalleryActivity.MediaItem> selectedItems = new ArrayList<>();
     private final GalleryItemListener listener;
 
     public interface GalleryItemListener {
         void onSelectionModeChanged(boolean isSelectionMode);
-        void onItemClicked(Uri uri);
+        void onItemClicked(int position);
     }
 
-    public GalleryAdapter(Context context, List<Uri> imageUris, GalleryItemListener listener) {
+    // Constructor chấp nhận List<GalleryActivity.MediaItem>
+    public GalleryAdapter(Context context, List<GalleryActivity.MediaItem> mediaItems, GalleryItemListener listener) {
         this.context = context;
-        this.imageUris = imageUris;
+        this.mediaItems = mediaItems;
         this.listener = listener;
     }
 
@@ -39,35 +42,36 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageVie
 
     @Override
     public void onBindViewHolder(@NonNull ImageViewHolder holder, int position) {
-        Uri currentUri = imageUris.get(position);
-        Glide.with(context).load(currentUri).centerCrop().into(holder.imageView);
+        GalleryActivity.MediaItem currentItem = mediaItems.get(position);
 
-        boolean isSelected = selectedUris.contains(currentUri);
+        Glide.with(context).load(currentItem.uri).centerCrop().into(holder.imageView);
+
+        boolean isSelected = selectedItems.contains(currentItem);
         holder.checkView.setVisibility(isSelected ? View.VISIBLE : View.GONE);
         holder.overlayView.setVisibility(isSelected ? View.VISIBLE : View.GONE);
 
         holder.itemView.setOnClickListener(v -> {
-            if (!selectedUris.isEmpty()) {
-                toggleSelection(currentUri);
+            if (!selectedItems.isEmpty()) {
+                toggleSelection(currentItem);
             } else {
-                listener.onItemClicked(currentUri);
+                listener.onItemClicked(holder.getAdapterPosition());
             }
         });
 
         holder.itemView.setOnLongClickListener(v -> {
-            toggleSelection(currentUri);
+            toggleSelection(currentItem);
             return true;
         });
     }
 
-    private void toggleSelection(Uri uri) {
-        boolean wasEmpty = selectedUris.isEmpty();
-        if (selectedUris.contains(uri)) {
-            selectedUris.remove(uri);
+    private void toggleSelection(GalleryActivity.MediaItem item) {
+        boolean wasEmpty = selectedItems.isEmpty();
+        if (selectedItems.contains(item)) {
+            selectedItems.remove(item);
         } else {
-            selectedUris.add(uri);
+            selectedItems.add(item);
         }
-        boolean isEmptyNow = selectedUris.isEmpty();
+        boolean isEmptyNow = selectedItems.isEmpty();
         if (wasEmpty != isEmptyNow) {
             listener.onSelectionModeChanged(!isEmptyNow);
         }
@@ -75,12 +79,12 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageVie
     }
 
     public List<Uri> getSelectedUris() {
-        return new ArrayList<>(selectedUris);
+        return selectedItems.stream().map(item -> item.uri).collect(Collectors.toList());
     }
 
     public void clearSelections() {
-        boolean wasInSelectionMode = !selectedUris.isEmpty();
-        selectedUris.clear();
+        boolean wasInSelectionMode = !selectedItems.isEmpty();
+        selectedItems.clear();
         if (wasInSelectionMode) {
             listener.onSelectionModeChanged(false);
         }
@@ -88,12 +92,12 @@ public class GalleryAdapter extends RecyclerView.Adapter<GalleryAdapter.ImageVie
     }
 
     public int getSelectedItemCount() {
-        return selectedUris.size();
+        return selectedItems.size();
     }
 
     @Override
     public int getItemCount() {
-        return imageUris.size();
+        return mediaItems.size();
     }
 
     static class ImageViewHolder extends RecyclerView.ViewHolder {
