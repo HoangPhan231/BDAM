@@ -8,6 +8,7 @@ plugins {
 android {
     namespace = "com.example.bdam"
     compileSdk = 35
+    ndkVersion = "25.1.8937393"
 
     defaultConfig {
         applicationId = "com.example.bdam"
@@ -15,8 +16,10 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a"))
+        }
     }
 
     buildTypes {
@@ -47,7 +50,10 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-
     implementation(libs.glide)
     kapt(libs.glide.compiler)
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.22.0")
+    implementation ("com.google.android.gms:play-services-location:21.0.1")
+    implementation ("com.github.bumptech.glide:glide:4.12.0")
+    annotationProcessor ("com.github.bumptech.glide:compiler:4.12.0")
 }

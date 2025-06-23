@@ -11,30 +11,30 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 public class DateFormatPickerAdapter extends BaseAdapter {
 
     private final Context context;
-    private final List<Map.Entry<String, String>> formatList;
+    // Thay đổi từ List<Map.Entry<String, String>> thành List<String>
+    private final List<String> formatPatternList;
     private final LayoutInflater inflater;
     private String selectedFormatPattern;
 
-    public DateFormatPickerAdapter(Context context, List<Map.Entry<String, String>> formatList, String currentlySelectedPattern) {
+    public DateFormatPickerAdapter(Context context, List<String> formatPatternList, String currentlySelectedPattern) {
         this.context = context;
-        this.formatList = formatList;
+        this.formatPatternList = formatPatternList;
         this.selectedFormatPattern = currentlySelectedPattern;
         this.inflater = LayoutInflater.from(context);
     }
 
     @Override
     public int getCount() {
-        return formatList.size();
+        return formatPatternList.size();
     }
 
     @Override
     public Object getItem(int position) {
-        return formatList.get(position);
+        return formatPatternList.get(position);
     }
 
     @Override
@@ -55,8 +55,8 @@ public class DateFormatPickerAdapter extends BaseAdapter {
             holder = (ViewHolder) convertView.getTag();
         }
 
-        Map.Entry<String, String> formatEntry = formatList.get(position);
-        String formatPattern = formatEntry.getValue();
+        // Lấy chuỗi định dạng trực tiếp từ danh sách
+        String formatPattern = formatPatternList.get(position);
 
         // Hiển thị ví dụ với thời gian hiện tại
         SimpleDateFormat sdf = new SimpleDateFormat(formatPattern, Locale.getDefault());

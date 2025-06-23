@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black"
+    tools:context=".ImageDetailActivity">
+
+    <LinearLayout
+        android:id="@+id/detail_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_alignParentTop="true"
+        android:background="#80000000"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageButton
+            android:id="@+id/button_detail_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Quay lại"
+            android:padding="16dp"
+            android:src="@android:drawable/ic_menu_revert"
+            android:tint="@android:color/white" />
+
+        <View
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <ImageButton
+            android:id="@+id/btn_run_ai"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Chạy mô hình AI"
+            android:padding="16dp"
+            android:src="@drawable/ic_star"
+            android:tint="@android:color/white" />
+
+        <ImageButton
+            android:id="@+id/button_share_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Chia sẻ"
+            android:padding="16dp"
+            android:src="@android:drawable/ic_menu_share"
+            android:tint="@android:color/white" />
+
+        <ImageButton
+            android:id="@+id/button_delete_detail"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Xóa"
+            android:padding="16dp"
+            android:src="@android:drawable/ic_menu_delete"
+            android:tint="@android:color/white" />
+    </LinearLayout>
+
+    <androidx.viewpager2.widget.ViewPager2
+        android:id="@+id/viewPager_images"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/detail_toolbar"/>
+
+</RelativeLayout>
